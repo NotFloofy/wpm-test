@@ -1,0 +1,1 @@
+DOWNLOAD THE .TXT FILE FOR BETTER WORDS, i wont force you btw
