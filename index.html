@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>word per minute finder</title>
+    <style>
+      /* dark theme */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0d1b2a;
+        color: #e0e1dd;
+        font-family: sans-serif;
+        height: 100%;
+        overflow: hidden;
+      }
+      #container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%,-50%);
+        width: 90%;
+        max-width: 600px;
+        text-align: center;
+        z-index: 2;
+      }
+      /* container */
+      #textContainer {
+        position: relative;
+        width: 100%;
+        min-height: 100px;
+        margin-bottom: 10px;
+      }
+      /* test text in background */
+      #testText {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        color: rgba(224,225,221,0.5);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        pointer-events: none;
+      }
+      /* input area on top with transparent background */
+      #inputArea {
+        position: relative;
+        width: 100%;
+        min-height: 100px;
+        padding: 10px;
+        background: transparent;
+        border: 1px solid #1b263b;
+        border-radius: 5px;
+        font-size: 1.2em;
+        color: #e0e1dd;
+        z-index: 1;
+        resize: none;
+      }
+      #controls {
+        margin-top: 10px;
+      }
+      #controls input,
+      #controls button {
+        padding: 10px;
+        margin: 5px;
+        border: none;
+        border-radius: 5px;
+        font-size: 1em;
+      }
+      #controls input {
+        width: 40%;
+      }
+      #controls button {
+        background: #415a77;
+        color: #e0e1dd;
+        cursor: pointer;
+      }
+      #result {
+        margin-top: 10px;
+      }
+      /* three js */
+      #threeCanvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      /* mobile tweaks */
+      @media (max-width: 600px) {
+        #inputArea, #testText {
+          font-size: 1.1em;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <div id="textContainer">
+        <div id="testText"></div>
+        <textarea id="inputArea" placeholder="type here (recommend download the .txt for better words)"></textarea>
+      </div>
+      <div id="controls">
+        <input type="number" id="wordCountInput" placeholder="word count">
+        <input type="file" id="dictFileInput" accept=".txt">
+        <button id="startButton">start test</button>
+      </div>
+      <div id="result"></div>
+    </div>
+    <canvas id="threeCanvas"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      // define default dictionary words
+      let defaultWords = [
+        "furry", "piano", "digest", "forest", "moon", "star", "sky",
+        "smug", "ocean", "wind", ":3", "light", "shadow", "dream",
+        "spark", "cloud", "belly", "egg"
+      ]
+      
+      let wordList = []
+      let testWords = []
+      let startTime = 0
+      let testStarted = false
+      
+      const testText = document.getElementById("testText")
+      const inputArea = document.getElementById("inputArea")
+      const wordCountInput = document.getElementById("wordCountInput")
+      const dictFileInput = document.getElementById("dictFileInput")
+      const startButton = document.getElementById("startButton")
+      const resultDiv = document.getElementById("result")
+      
+      // load dictionary file if they downloaded it
+      dictFileInput.addEventListener("change", e => {
+        const file = e.target.files[0]
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = event => {
+          let text = event.target.result
+          let words = text.split(/\s+/)
+          wordList = words.filter(w => w.length > 0)
+        }
+        reader.readAsText(file)
+      })
+      
+      // start test when button clicked
+      startButton.addEventListener("click", () => {
+        inputArea.value = ""
+        resultDiv.textContent = ""
+        testStarted = false
+        // choose dictionary
+        let dict = wordList.length > 0 ? wordList : defaultWords
+        let count = parseInt(wordCountInput.value) || 20
+        testWords = []
+        for (let i = 0; i < count; i++) {
+          let index = Math.floor(Math.random() * dict.length)
+          testWords.push(dict[index])
+        }
+        // update test text background
+        testText.textContent = testWords.join(" ")
+      })
+      
+      // start timer on first key and check completion
+      inputArea.addEventListener("input", () => {
+        if (!testStarted) {
+          startTime = new Date().getTime()
+          testStarted = true
+        }
+        // if input exactly matches the tte5ttxt
+        if (inputArea.value.trim() === testWords.join(" ")) {
+          let endTime = new Date().getTime()
+          let timeTaken = (endTime - startTime) / 1000
+          let minutes = timeTaken / 60
+          let wpm = testWords.length / minutes
+          resultDiv.textContent = "wpm " + Math.round(wpm)
+        }
+      })
+      
+      // create three js scene for animated background
+      let scene = new THREE.Scene()
+      let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000)
+      let renderer = new THREE.WebGLRenderer({canvas: document.getElementById("threeCanvas"), alpha: true})
+      renderer.setSize(window.innerWidth, window.innerHeight)
+      
+      // create a rotating cube (torture to find out how)
+      let geometry = new THREE.BoxGeometry(2,2,2)
+      let material = new THREE.MeshBasicMaterial({color: 0x415a77, wireframe: true})
+      let cube = new THREE.Mesh(geometry, material)
+      scene.add(cube)
+      camera.position.z = 5
+      
+      function animate() {
+        requestAnimationFrame(animate)
+        cube.rotation.x += 0.005
+        cube.rotation.y += 0.005
+        renderer.render(scene, camera)
+      }
+      animate()
+      
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth/window.innerHeight
+        camera.updateProjectionMatrix()
+        renderer.setSize(window.innerWidth, window.innerHeight)
+      })
+    </script>
+  </body>
+</html>
